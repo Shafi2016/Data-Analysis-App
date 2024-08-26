@@ -60,7 +60,7 @@ if uploaded_file is not None:
     )
 
     # Create a text input for the query
-    query = st.text_input("Enter your query (e.g., 'How many rows are there?')")
+    query = st.text_input("Enter your query (e.g., 'Show the average of Per capita Value of active businesses by year in Alberta in Table and make a bar chart of it')")
 
     if st.button("Run Query"):
         # Invoke the agent with the query and get the response
@@ -72,19 +72,22 @@ if uploaded_file is not None:
         if current_fig.get_axes():  # Check if the figure has any axes (indicating a plot)
             st.pyplot(current_fig)  # Display the plot
             plt.clf()  # Clear the figure to avoid conflicts with future plots
+
+        # Handle tabular data
+        if isinstance(response, pd.DataFrame):
+            st.write("### Resulting Table")
+            st.dataframe(response)
+        elif isinstance(response, dict) and "output" in response:
+            st.markdown(
+                f'<div class="custom-container"><p class="big-font">{response["output"]}</p></div>',
+                unsafe_allow_html=True,
+            )
         else:
-            # Display only the answer (assuming response is a dictionary or JSON-like structure)
-            if isinstance(response, dict) and "output" in response:
-                st.markdown(
-                    f'<div class="custom-container"><p class="big-font">{response["output"]}</p></div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                # Fallback to displaying the entire response if it's not in the expected format
-                st.markdown(
-                    f'<div class="custom-container"><p class="big-font">{response}</p></div>',
-                    unsafe_allow_html=True,
-                )
+            # Fallback to displaying the entire response if it's not in the expected format
+            st.markdown(
+                f'<div class="custom-container"><p class="big-font">{response}</p></div>',
+                unsafe_allow_html=True,
+            )
 
 else:
     st.write("Please upload a file to begin.")
