@@ -68,7 +68,7 @@ if access_code and access_code in valid_access_codes:
         )
 
         # Create a text input for the query
-        query = st.text_input("Enter your query (e.g., 'Show the average of Per capita Value of active businesses by year in Alberta in Table and make a bar chart of it')")
+        query = st.text_input("Enter your query (e.g., 'show the average of Per capita Value of active businesses by year in Alberta')")
 
         if st.button("Run Query"):
             # Invoke the agent with the query and get the response
