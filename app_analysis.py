@@ -1,46 +1,59 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit_authenticator as stauth
 from langchain.agents.agent_types import AgentType
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain_openai import ChatOpenAI
+import yaml
+from yaml.loader import SafeLoader
 
-# Securely retrieve access codes and API keys from Streamlit Secrets
-valid_access_codes = st.secrets["general"].get("valid_access_codes", [])
-openai_api_key = st.secrets["general"]["OPENAI_API_KEY"]
+# Load credentials and configuration from Streamlit Secrets
+credentials = yaml.safe_load(st.secrets["general"]["credentials"])
+cookie_name = st.secrets["general"]["cookie_name"]
+cookie_key = st.secrets["general"]["cookie_key"]
+cookie_expiry_days = st.secrets["general"]["cookie_expiry_days"]
 
-# Inject custom CSS to change font size and background color
-st.markdown(
-    """
-    <style>
-    .big-font {
-        font-size: 20px !important;
-    }
-    .dataframe {
-        font-size: 18px !important;
-    }
-    .custom-container {
-        background-color: #0077a8;
-        padding: 10px;
-        border-radius: 5px;
-        width: 100%;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .custom-container h1 {
-        color: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
+# Create an authenticator object with hashed passwords
+authenticator = stauth.Authenticate(
+    credentials,
+    cookie_name,
+    cookie_key,
+    cookie_expiry_days,
+    None  # No preauthorized emails in this example
 )
 
-# Create a login form on the sidebar
-access_code = st.sidebar.text_input("Enter your access code", type="password")
+name, authentication_status, username = authenticator.login('main')
 
-# Validate access code only if it's not empty
-if access_code and access_code in valid_access_codes:
-    st.sidebar.success("Access granted!")
+if authentication_status:
+    # Inject custom CSS to change font size and background color
+    st.markdown(
+        """
+        <style>
+        .big-font {
+            font-size: 20px !important;
+        }
+        .dataframe {
+            font-size: 18px !important;
+        }
+        .custom-container {
+            background-color: #0077a8;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .custom-container h1 {
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Fetch the OpenAI API key from Streamlit secrets
+    openai_api_key = st.secrets["general"]["OPENAI_API_KEY"]
 
     # Initialize the Streamlit app
     st.markdown('<div class="custom-container"><h1>Data Analysis App</h1></div>', unsafe_allow_html=True)
@@ -68,7 +81,7 @@ if access_code and access_code in valid_access_codes:
         )
 
         # Create a text input for the query
-        query = st.text_input("Enter your query (e.g., 'show the average of Per capita Value of active businesses by year in Alberta')")
+        query = st.text_input("Enter your query (e.g., 'How many rows are there?')")
 
         if st.button("Run Query"):
             # Invoke the agent with the query and get the response
@@ -80,27 +93,24 @@ if access_code and access_code in valid_access_codes:
             if current_fig.get_axes():  # Check if the figure has any axes (indicating a plot)
                 st.pyplot(current_fig)  # Display the plot
                 plt.clf()  # Clear the figure to avoid conflicts with future plots
-
-            # Handle tabular data
-            if isinstance(response, pd.DataFrame):
-                st.write("### Resulting Table")
-                st.dataframe(response)
-            elif isinstance(response, dict) and "output" in response:
-                st.markdown(
-                    f'<div class="custom-container"><p class="big-font">{response["output"]}</p></div>',
-                    unsafe_allow_html=True,
-                )
             else:
-                # Fallback to displaying the entire response if it's not in the expected format
-                st.markdown(
-                    f'<div class="custom-container"><p class="big-font">{response}</p></div>',
-                    unsafe_allow_html=True,
-                )
+                # Display only the answer (assuming response is a dictionary or JSON-like structure)
+                if isinstance(response, dict) and "output" in response:
+                    st.markdown(
+                        f'<div class="custom-container"><p class="big-font">{response["output"]}</p></div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    # Fallback to displaying the entire response if it's not in the expected format
+                    st.markdown(
+                        f'<div class="custom-container"><p class="big-font">{response}</p></div>',
+                        unsafe_allow_html=True,
+                    )
 
     else:
         st.write("Please upload a file to begin.")
-
 else:
-    st.sidebar.error("Invalid access code. Please try again.")
-    st.warning("You must provide a valid access code to use the app.")
-
+    if authentication_status == False:
+        st.error('Username/password is incorrect')
+    elif authentication_status is None:
+        st.warning('Please enter your username and password')
