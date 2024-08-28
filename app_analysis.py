@@ -26,6 +26,9 @@ authenticator = stauth.Authenticate(
 name, authentication_status, username = authenticator.login('main')
 
 if authentication_status:
+    # Add logout option
+    authenticator.logout('Logout', 'sidebar')  # You can choose 'main' or 'sidebar' to place the logout button
+    
     # Inject custom CSS to change font size and background color
     st.markdown(
         """
